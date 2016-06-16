@@ -1,0 +1,344 @@
+<html>
+	<head>
+
+	</head>
+
+	<body>
+		<style>
+			html, body{
+				margin:0;
+				padding: 0
+			}
+
+			.template{
+				display: none;
+			}
+
+			.button{
+				border:1px solid black;
+			}
+
+			.main-canvas{
+				height: 500px;
+			}
+
+			.main-canvas h1{
+				font-family: "Trajan Pro";
+			}
+		</style>
+		<div id="button-template" class="template">
+			<button class="button" onClick="takeDecision({{eventIndex}}, {{decisionIndex}})">{{name}}</button>
+		</div> 
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.5/handlebars.min.js"></script>	
+
+		<script>
+			// UTILS
+			function getRandom(min, max) {
+				return Math.random() * (max - min) + min;
+			}
+
+			function getRandomInt(min, max) {
+				return Math.floor(Math.random() * (max - min + 1) + min);
+			}
+
+			function limitPercent(value) {
+				if(value >= 1){
+					return 1
+				}
+				if(value <= 0){
+					return 0
+				}
+				return value
+			}
+
+			var buttonTemplate = Handlebars.compile($("#button-template").html())
+
+			//Games
+			var interval = null
+			//Game status:
+			// 1 running
+			// 2 waiting for decision
+			// 3 game over
+			var gameStatus = {ecomomyState:0.7, socialStability:0.7, freedomAndLaw:0.7, presidentPopularity:0.51, decisionTaked:0, terms:0, status:1, gameOverReason:""} 
+			var eventIndex = 0
+			var activeActions = [] // Recurent actions, populated by decision
+			var ev = [
+				// {name:"You are president", image:"img/president.png", decisions:[
+				// 	{name:"grow the minimum salary", action:
+				// 		function(){
+				// 			gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity * 1.1)
+				// 			gameStatus.ecomomyState = limitPercent(gameStatus.ecomomyState * 0.9)
+				// 		}
+				// 	},
+				// 	{name:"do nothing", action:
+				// 		function(){
+				// 			gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity * 0.8)
+				// 		}
+				// 	},
+				// ]},
+
+				{name:"You military allies request your country to send troops over foreign battle fields. Dou you accept?", image:"", decisions:[
+					{name:"Yes, it is our duty", action:
+						function(){
+							gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity - 0.2)
+							gameStatus.ecomomyState = limitPercent(gameStatus.ecomomyState + 0.1)
+						}
+					},
+					{name:"No, we don't shed our military's blood", action:
+						function(){
+							gameStatus.ecomomyState = limitPercent(gameStatus.ecomomyState - 0.2)
+						}
+					},
+					{name:"We love Switzerland", action:
+						function(){
+							gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity + 0.1)
+							gameStatus.ecomomyState = limitPercent(gameStatus.ecomomyState - 0.2)
+						}
+					},
+				]},
+
+				{name:"Refugees comes to your country. Do you accept them?", image:"img/refugee.png", decisions:[
+					{name:"Yes, they are welcome", action:
+						function(){
+							gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity + 0.05)
+						}
+					},
+					{name:"No, they are intruders", action:
+						function(){
+							gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity + 0.05)
+						}
+					},
+					{name:"We shall build a barbed wire fence", action:
+						function(){
+							gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity + 0.1)
+							gameStatus.ecomomyState = limitPercent(gameStatus.ecomomyState - 0.1)
+						}
+					}
+				]},
+
+				{name:"NATO invites your country to join the Alliance. What will you do?", image:"img/refugee.png", decisions:[
+					{name:"Yes, we will be protected", action:
+						function(){
+							gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity + 0.05)
+							gameStatus.ecomomyState = limitPercent(gameStatus.ecomomyState + 0.1)							
+						}
+					},
+					{name:"No, we can take care of ourselves", action:
+						function(){
+							gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity - 0.05)
+							gameStatus.ecomomyState = limitPercent(gameStatus.ecomomyState - 0.1)
+						}
+					}
+				]},
+
+				{name:"The neighbour countries have begun to adopt EURO as their national currency? Do you follow the trend?", image:"img/refugee.png", decisions:[
+					{name:"Yes, EURO rulz", action:
+						function(){
+							gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity - 0.1)
+							gameStatus.ecomomyState = limitPercent(gameStatus.ecomomyState - 0.25)
+							gameStatus.socialStability = limitPercent(gameStatus.socialStability - 0.1)						
+						}
+					},
+					{name:"No, we belive in our national currency", action:
+						function(){
+							gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity + 0.2)
+							gameStatus.socialStability = limitPercent(gameStatus.socialStability - 0.05)	
+						}
+					}
+				]},
+
+				{name:"Your country partners fighting terrorism would like your country to host terrorist prisoners in your jails. Do you agree?", image:"img/refugee.png", decisions:[
+					{name:"Yes", action:
+						function(){
+							gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity - 0.2)
+							gameStatus.ecomomyState = limitPercent(gameStatus.ecomomyState + 0.2)
+							gameStatus.socialStability = limitPercent(gameStatus.socialStability - 0.2)
+							gameStatus.freedomAndLaw = limitPercent(gameStatus.freedomAndLaw - 0.2)
+						}
+					},
+					{name:"No", action:
+						function(){
+							gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity + 0.1)
+							gameStatus.freedomAndLaw = limitPercent(gameStatus.freedomAndLaw + 0.2)	
+						}
+					}
+				]},
+
+				{name:"The Opposition party constantly criticizes your activity. Do you forbid its activity?", image:"img/refugee.png", decisions:[
+					{name:"Yes, I am perfect", action:
+						function(){
+							gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity + 0.4)
+							gameStatus.socialStability = limitPercent(gameStatus.socialStability - 0.4)
+							gameStatus.freedomAndLaw = limitPercent(gameStatus.freedomAndLaw - 0.4)
+						}
+					},
+					{name:"No, I am human too", action:
+						function(){
+							gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity - 0.05)
+							gameStatus.freedomAndLaw = limitPercent(gameStatus.freedomAndLaw + 0.02)	
+						}
+					},
+					{name:"No", action:
+						function(){
+							gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity + 0.1)
+						}
+					},
+				]},
+
+				{name:"Prosecutors run an investigation on some members of parliament and on you as a president. Do you protect them and yourself by immunization against the law?", image:"img/refugee.png", decisions:[
+					{name:"Yes, we are untouchable", action:
+						function(){
+							gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity + 0.4)
+							gameStatus.socialStability = limitPercent(gameStatus.socialStability - 0.4)
+							gameStatus.freedomAndLaw = limitPercent(gameStatus.freedomAndLaw - 0.4)
+						}
+					},
+					{name:"No", action:
+						function(){
+							gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity - 0.05)
+							gameStatus.freedomAndLaw = limitPercent(gameStatus.freedomAndLaw + 0.2)
+							gameStatus.socialStability = limitPercent(gameStatus.socialStability + 0.2)
+						}
+					}
+				]},
+
+				{name:"A mayor in one of the country's largest cities, wants to deal with minority by building a wall around their neigbourhood. How do you react?", image:"img/refugee.png", decisions:[
+					{name:"Yes, I endorse his actions", action:
+						function(){
+							gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity + 0.2)
+							gameStatus.socialStability = limitPercent(gameStatus.socialStability - 0.1)
+							gameStatus.freedomAndLaw = limitPercent(gameStatus.freedomAndLaw - 0.1)
+						}
+					},
+					{name:"No, it's against civil rights", action:
+						function(){
+							gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity - 0.01)
+							gameStatus.freedomAndLaw = limitPercent(gameStatus.freedomAndLaw + 0.1)
+							gameStatus.socialStability = limitPercent(gameStatus.socialStability + 0.1)
+						}
+					}
+				]},
+
+				{name:"Certain Court decisions made you unhappy as they refer to members of your family who lost some valuable properties. Do you publicly criticizes the decision?", image:"img/refugee.png", decisions:[
+					{name:"Yes", action:
+						function(){
+							gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity + 0.1)
+							gameStatus.freedomAndLaw = limitPercent(gameStatus.freedomAndLaw - 0.05)
+						}
+					},
+					{name:"No", action:
+						function(){
+							gameStatus.presidentPopularity = limitPercent(gameStatus.presidentPopularity - 0.02)
+						}
+					}
+				]}	
+
+			]
+
+			function resetEvent(){
+				$('.main-canvas').css("background","none")
+				$('#decisions').html('')
+				$('.main-canvas .title').html(' ')
+			}
+
+			function takeDecision(eventIndex, decisionIndex){
+				var selectedDecision = ev[eventIndex].decisions[decisionIndex]
+				selectedDecision.action()
+				console.warn("decision taked: " + selectedDecision.name)
+				gameStatus.status = 1
+				gameStatus.decisionTaked++
+				resetEvent()
+				updateHUD()
+			}
+			
+			function triggerEvent(){
+				// var eventIndex = getRandomInt(0, ev.length-1)
+				var selectedEvent = ev[eventIndex]
+				console.warn('event triggered: ' + selectedEvent.name)
+
+				//Draw event and possible decisions
+				resetEvent()
+				// $('.main-canvas').css("background","url(" + selectedEvent.image + ")")
+				$('.main-canvas .title').html(selectedEvent.name)
+				for(var i=0; i<selectedEvent.decisions.length; i++){
+					$('#decisions').append(buttonTemplate({name:selectedEvent.decisions[i].name, eventIndex:eventIndex, decisionIndex:i}))
+				}
+				gameStatus.status = 2;
+				eventIndex++
+			}
+
+			function makeElections(){
+				if(getRandomInt(0,100) < gameStatus.presidentPopularity * 100){
+					console.warn('you won the elections')
+					gameStatus.terms++
+				}else{
+					console.warn('you lost the elections')
+					gameStatus.status = 3 // game over
+					gameStatus.gameOverReason = "lost elections"
+				}
+			}
+
+			function socialStatusCheck(){
+				if(gameStatus.ecomomyState < 0.2 || gameStatus.socialStability < 0.2){
+					gameStatus.status = 3
+					gameStatus.gameOverReason = "Your country is in colapse"
+				}
+			}
+
+			function updateHUD(){
+				$("#economy").html(parseFloat(gameStatus.ecomomyState * 100).toFixed(0) + "%")
+				$("#social").html(parseFloat(gameStatus.socialStability * 100).toFixed(0) + "%")
+				$("#freedom").html(parseFloat(gameStatus.freedomAndLaw * 100).toFixed(0) + "%")
+				$("#president").html(parseFloat(gameStatus.presidentPopularity * 100).toFixed(0) + "%")
+			}
+
+			function runGame(){
+				socialStatusCheck()
+				updateHUD()
+				if(gameStatus.status == 1){
+
+					// elections
+					if(gameStatus.decisionTaked > 1 && gameStatus.decisionTaked % 5 == 0){
+						makeElections()
+						gameStatus.decisionTaked++
+					}else{
+						triggerEvent()
+					}
+
+					//run recurent actions
+					for(var i=0; i<activeActions.length; i++){
+						activeActions[i]();
+					}
+					console.log(gameStatus)
+				}
+
+				if(gameStatus.status == 3){
+					var gameOverMessage = "GAME OVER! \r\nReason: " + gameStatus.gameOverReason + "\r\n" + gameStatus.terms + " terms in office, \r\n" + gameStatus.decisionTaked + " decisions"
+					console.warn(gameOverMessage)
+					alert(gameOverMessage)
+					clearInterval(interval)
+				}
+			}
+
+			interval = setInterval(runGame, 3000)
+
+		</script>
+
+
+		<div class="main-canvas">
+			<h1 class="title"></h1>
+			<div id="decisions"></div>
+
+			<div>
+				Economy <span id="economy"></span>
+				Social stability <span id="social"></span>
+				Freedom and Rule of Law <span id="freedom"></span>
+				President popularity <span id="president"></span>
+			</div>
+
+		</div>
+
+
+	</body>
+</html>
