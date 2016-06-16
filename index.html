@@ -242,8 +242,11 @@
 			}
 			
 			function triggerEvent(){
-				// var eventIndex = getRandomInt(0, ev.length-1)
-				var selectedEvent = ev[eventIndex]
+				if(eventIndex > ev.length-1){
+					eventIndex = getRandomInt(0, ev.length-1)
+				}
+				
+				var selectedEvent = ev[eventIndex]				
 				console.warn('event triggered: ' + selectedEvent.name)
 
 				//Draw event and possible decisions
